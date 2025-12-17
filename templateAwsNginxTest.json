@@ -58,7 +58,8 @@
       "inline": [
         "echo 'Instalando Nginx...'",
         "sudo apt-get install -y nginx",
-        "sudo systemctl enable nginx"
+		"sudo systemctl start nginx",
+        "sudo systemctl enable --now nginx"
       ]
     },
     {
@@ -72,7 +73,7 @@
         "echo 'Creando directorio de aplicación...'",
         "sudo mkdir -p /opt/nodejs-app",
         "sudo cp /tmp/hello.js /opt/nodejs-app/",
-        "sudo chown -R ubuntu:ubuntu /opt/nodejs-app"
+        "sudo chown -R www-data:www-data /opt/nodejs-app"
       ]
     },
     {
