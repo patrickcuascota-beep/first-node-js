@@ -1,0 +1,94 @@
+{
+  "variables": {
+    "aws_region": "us-east-2",
+    
+    "source_ami": "ami-05803413c51f242b7",
+    "instance_type": "t3.micro",
+    "ssh_username": "ubuntu",
+    "app_port": "3000",
+    "web_port": "80",
+    "app_version": "1.0.0"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "{{user `aws_region`}}",
+      "access_key": "{{user `aws_access_key_id`}}",
+      "secret_key": "{{user `aws_secret_access_key`}}",
+      "source_ami": "{{user `source_ami`}}",
+      "instance_type": "{{user `instance_type`}}",
+      "ssh_username": "{{user `ssh_username`}}",
+      "ami_name": "webapp-nodejs-nginx-{{timestamp}}",
+      "ami_description": "AMI con Node.js, Nginx y aplicación web preconfigurada",
+      "communicator": "ssh",
+      "ssh_timeout": "15m",
+      "associate_public_ip_address": true,
+      "tags": {
+        "Name": "Web App Base AMI",
+        "OS_Version": "Ubuntu 22.04",
+        "Release": "Latest",
+        "App_Version": "{{user `app_version`}}"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Actualizando sistema...'",
+        "sudo apt-get update",
+        "sudo apt-get upgrade -y"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Instalando Node.js...'",
+        "cd ~",
+        "curl -sL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh",
+        "sudo bash nodesource_setup.sh",
+        "sudo apt-get install -y nodejs",
+        "node -v",
+        "npm -v",
+        "sudo apt-get install build-essential -y"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Instalando Nginx...'",
+        "sudo apt-get install -y nginx",
+        "sudo systemctl enable nginx"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "templates/hello.js",
+      "destination": "/tmp/hello.js"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Creando directorio de aplicación...'",
+        "sudo mkdir -p /opt/nodejs-app",
+        "sudo cp /tmp/hello.js /opt/nodejs-app/",
+        "sudo chown -R ubuntu:ubuntu /opt/nodejs-app"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Limpiando...'",
+        "sudo apt-get clean",
+        "sudo rm -rf /tmp/*"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "manifest",
+      "output": "manifest.json",
+      "strip_path": true
+    }
+  ]
+}
