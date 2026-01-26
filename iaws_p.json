@@ -1,0 +1,71 @@
+{
+  "variables": {
+    "aws_access_key_id": "{{env `aws_access_key`}}",
+    "aws_secret_access_key": "{{env `aws_secret_key`}}",
+    "aws_region": "{{env `aws_region`}}",
+    "source_ami": "ami-0c5ddb3560e768732",
+    "app_version": "1.0.0",
+    "instance_type": "t3.micro",
+    "key_name": "aws-pc-auth",
+    "security_group_id": "sg-0c7704fa8d6624c2b",
+    "subnet_id": "subnet-08b9585e43496cf14",
+    "instance_name": "webapp-ec2-instance"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "access_key": "{{user `aws_access_key_id`}}",
+      "secret_key": "{{user `aws_secret_access_key`}}",
+      "region": "{{user `aws_region`}}",
+      "source_ami": "{{user `source_ami`}}",
+      "instance_type": "{{user `instance_type`}}",
+      "ssh_username": "ubuntu",
+      "ami_name": "ami-nodenginx",
+      "ami_description": "AMI con Nginx y Node.js preconfigurado",
+      "communicator": "ssh",
+      "ssh_timeout": "20m",
+      "associate_public_ip_address": true,
+      "temporary_security_group_source_public_ip": true,
+      "tags": {
+        "Name": "Web App Base AMI Node.js Nginx",
+        "OS_Version": "Ubuntu 22.04",
+        "Release": "Latest",
+        "App_Version": "{{user `app_version`}}"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Verificando version de Ubuntu...'",
+        ". /etc/os-release",
+        "echo \"Version detectada: $VERSION_ID\"",
+        "if [ \"$VERSION_ID\" != \"22.04\" ]; then",
+        "  echo \"Se detecto: $VERSION_ID\"",
+        "fi"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "manifest",
+      "output": "manifest.json",
+      "strip_path": true
+    },
+    {
+      "type": "shell-local",
+      "inline": [
+        "echo 'Image Name: {{user `image_name`}}'"
+      ]
+    },
+    {
+      "type": "shell-local",
+      "inline": [
+        "echo 'Lanzando la instancia EC2 desde la AMI generada...'",
+        "aws ec2 run-instances --region {{user `aws_region`}} --image-id $(jq -r '.builds[0].artifact_id' manifest.json | cut -d ':' -f2) --instance-type {{user `instance_type`}} --key-name {{user `key_name`}} --security-group-ids {{user `security_group_id`}} --subnet-id {{user `subnet_id`}} --associate-public-ip-address --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value={{user `instance_name`}}}]' --output table"
+      ],
+      "only": ["amazon-ebs"]
+    }
+  ]
+}
